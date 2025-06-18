@@ -1,0 +1,32 @@
+name: conda_environment
+channels:
+  - conda-forge
+  - defaults
+
+dependencies:
+  - python=3.9
+  - pip
+  - pyfmi
+  - lxml
+  - assimulo
+  - cython
+  - wxpython
+  - seaborn
+  - plotly
+  - networkx
+  - pip:
+      - numpy
+      - pandas
+      - matplotlib
+      - ipykernel
+      - notebook
+      - paho-mqtt
+      - influxdb_client
+      - gym
+      - stable_baselines3
+      - shimmy>=2.0
+      - rbfopt==4.2.6
+      - besos
+      - harlow
+      - git+https://github.com/building-energy/epw.git@master
+      - tensorflow-probability[tf]
