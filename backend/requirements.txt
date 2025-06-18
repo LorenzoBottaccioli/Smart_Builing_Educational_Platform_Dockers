@@ -1,0 +1,13 @@
+Flask
+Flask-SQLAlchemy
+Flask-Cors
+Flask-Session
+eppy
+nbformat
+influxdb-client
+paho-mqtt
+influxdb        # si aún usas el cliente de InfluxDB 1.x en algún punto
+python-dotenv    # si tu código usa .env (aunque ya lo quitaste, queda por si acaso)
+Werkzeug
+SQLAlchemy
+requests      # en caso de que hagas peticiones HTTP (e.g. a openHAB)
