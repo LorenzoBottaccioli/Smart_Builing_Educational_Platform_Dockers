@@ -1,0 +1,268 @@
+version: '3.8'
+
+services:
+  ### --------------------------
+  ### BUILDER DE ENTORNO UNIFICADO
+  ### --------------------------
+  jupyter_env_builder:
+    build:
+      context: ./conda-environment
+      dockerfile: Dockerfile
+    image: jupyter:smartbuilding
+
+  ### --------------------
+  ### JUPYTER SIMULATION
+  ### --------------------
+  jupyter_simulation:
+    image: jupyter:smartbuilding
+    container_name: jupyter_simulation
+    ports:
+      - "8887:8888"
+    volumes:
+      - ./backend/simulation_notebooks:/home/jovyan/notebooks
+      - ./backend/uploads:/home/jovyan/uploads
+      - ./Controller:/home/jovyan/controller_notebooks
+      - energyplus_data:/usr/local/EnergyPlus-9-6-0-4b123cf80f-Linux-Ubuntu20.04-x86_64:ro
+    depends_on:
+      - jupyter_env_builder
+      - backend
+      - energyplus
+
+  ### --------------------
+  ### JUPYTER SURROGATE
+  ### --------------------
+  jupyter_surrogate:
+    image: jupyter:smartbuilding
+    container_name: jupyter_surrogate
+    ports:
+      - "8889:8888"
+    volumes:
+      - ./backend/surrogate_notebooks:/home/jovyan/notebooks
+      - ./backend/uploads:/home/jovyan/uploads
+      - energyplus_data:/usr/local/EnergyPlus-9-6-0-4b123cf80f-Linux-Ubuntu20.04-x86_64:ro
+    depends_on:
+      - jupyter_env_builder
+      - backend
+      - energyplus
+
+  controlledsimulation:
+    image: jupyter:smartbuilding
+    container_name: controlledsimulation
+    ports:
+      - "8890:8888"
+    volumes:
+      - ./ControlledSimulation:/home/jovyan/notebooks
+      - ./backend/uploads:/home/jovyan/uploads:ro
+      - energyplus_data:/usr/local/EnergyPlus-9-6-0-4b123cf80f-Linux-Ubuntu20.04-x86_64:ro
+    depends_on:
+      - jupyter_simulation
+
+  basesimulation:
+    image: jupyter:smartbuilding
+    container_name: basesimulation
+    ports:
+      - "8891:8888"
+    volumes:
+      - ./BaseSimulation:/home/jovyan/notebooks
+      - ./backend/uploads:/home/jovyan/uploads:ro
+      - energyplus_data:/usr/local/EnergyPlus-9-6-0-4b123cf80f-Linux-Ubuntu20.04-x86_64:ro
+    depends_on:
+      - jupyter_simulation
+
+  controller:
+    image: jupyter:smartbuilding
+    container_name: controller
+    ports:
+      - "8892:8888"
+    volumes:
+      - ./Controller:/home/jovyan/notebooks
+      - ./backend/uploads:/home/jovyan/uploads:ro
+      - energyplus_data:/usr/local/EnergyPlus-9-6-0-4b123cf80f-Linux-Ubuntu20.04-x86_64:ro
+    depends_on:
+      - jupyter_simulation
+
+  mosquitto:
+    image: eclipse-mosquitto:2.0
+    container_name: mosquitto
+    restart: unless-stopped
+    ports:
+      - "1883:1883"
+    volumes:
+      - ./mosquitto/mosquitto.conf:/mosquitto/config/mosquitto.conf:ro
+      - ./mosquitto/data:/mosquitto/data
+      - ./mosquitto/log:/mosquitto/log
+
+  influxdb:
+    image: influxdb:1.11.8
+    container_name: influxdb
+    restart: unless-stopped
+    ports:
+      - "8086:8086"
+    volumes:
+      - ./influxdb1/data:/var/lib/influxdb
+    environment:
+      - INFLUXDB_ADMIN_ENABLED=true
+      - INFLUXDB_ADMIN_USER=admin
+      - INFLUXDB_ADMIN_PASSWORD=admin123
+    command: >
+      sh -c '
+        influxd & 
+        until curl --silent --fail http://localhost:8086/ping; do
+          echo "⏳ Esperando a InfluxDB…";
+          sleep 1;
+        done;
+        influx -host localhost -port 8086 \
+               -username $${INFLUXDB_ADMIN_USER} \
+               -password $${INFLUXDB_ADMIN_PASSWORD} \
+               -execute "CREATE DATABASE base_building";
+        wait
+      '
+
+  grafana:
+    image: grafana/grafana:12.0.0
+    container_name: grafana
+    restart: unless-stopped
+    depends_on:
+      - influxdb
+    ports:
+      - "3000:3000"
+    volumes:
+      - grafana_data:/var/lib/grafana
+      - ./grafana/provisioning/datasources/influxdb.yaml:/etc/grafana/provisioning/datasources/influxdb.yaml:ro
+    environment:
+      - GF_SECURITY_ADMIN_USER=admin
+      - GF_SECURITY_ADMIN_PASSWORD=admin
+      - GF_AUTH_ANONYMOUS_ENABLED=true
+      - GF_AUTH_ANONYMOUS_ORG_ROLE=Viewer
+      - GF_SECURITY_ALLOW_EMBEDDING=true
+
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    image: backend:latest
+    container_name: backend
+    restart: unless-stopped
+    ports:
+      - "5000:5000"
+    volumes:
+      - ./backend/flask_session:/app/flask_session
+      - ./backend/uploads:/app/uploads
+      - ./backend/simulation_outputs:/app/simulation_outputs
+      - ./backend/user_files:/app/user_files
+      - ./backend/simulation_notebooks:/app/simulation_notebooks
+      - ./backend/surrogate_notebooks:/app/surrogate_notebooks
+      - ./backend/notebook_templates:/app/notebook_templates:ro
+      - /var/run/docker.sock:/var/run/docker.sock
+      - ./ControlledSimulation:/app/controlled_notebooks
+      - ./BaseSimulation:/app/base_notebooks
+      - ./Controller:/app/controller_notebooks
+    environment:
+      - INFLUX_URL=http://influxdb:8086
+      - INFLUX_USERNAME=admin
+      - INFLUX_PASSWORD=admin123
+      - INFLUX_DATABASE=controlled_building
+      - MQTT_BROKER_URL=mosquitto
+      - MQTT_BROKER_PORT=1883
+      - OPENHAB_URL=http://openhab:8080
+      - IDD_PATH=/app/EnergyPlus-9-6-0/Energy+.idd
+    depends_on:
+      - energyplus
+      - eptofmu
+      - influxdb
+      - mosquitto
+      - openhab
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    image: frontend:latest
+    container_name: frontend
+    restart: unless-stopped
+    ports:
+      - "80:80"
+    depends_on:
+      - backend
+
+  energyplus:
+    image: nrel/energyplus:9.6.0
+    container_name: energyplus
+    restart: unless-stopped
+    command: tail -f /dev/null
+    volumes:
+      - ./backend/uploads:/workspace/uploads
+      - ./backend/simulation_outputs:/workspace/simulation_outputs
+      - energyplus_data:/EnergyPlus-9.6.0-4b123cf80f-Linux-Ubuntu20.04-x86_64
+
+  eptofmu:
+    build:
+      context: ./eptofmu
+      dockerfile: Dockerfile
+    image: eptofmu:3.1.0
+    container_name: eptofmu
+    restart: unless-stopped
+    depends_on:
+      - energyplus
+    volumes:
+      - ./backend/uploads:/workspace/uploads
+      - ./backend/user_files:/workspace/user_files
+    command: tail -f /dev/null
+
+  subscriber:
+    build:
+      context: ./subscriber
+      dockerfile: Dockerfile
+    container_name: subscriber
+    restart: unless-stopped
+    depends_on:
+      - mosquitto
+      - influxdb
+    environment:
+      - MQTT_BROKER_URL=mosquitto
+      - MQTT_BROKER_PORT=1883
+      - MQTT_TOPIC=simulationRL/#
+      - INFLUX_URL=http://influxdb:8086
+      - INFLUX_DATABASE=controlled_building
+      - INFLUX_USERNAME=admin
+      - INFLUX_PASSWORD=admin123
+
+  subscriber2:
+    build:
+      context: ./subscriber2
+      dockerfile: Dockerfile
+    container_name: subscriber2
+    restart: unless-stopped
+    depends_on:
+      - mosquitto
+      - influxdb
+      - subscriber
+    environment:
+      - MQTT_BROKER_URL=mosquitto
+      - MQTT_BROKER_PORT=1883
+      - MQTT_TOPIC=simulationBase/#
+      - INFLUX_URL=http://influxdb:8086
+      - INFLUX_DATABASE=base_building
+      - INFLUX_USERNAME=admin
+      - INFLUX_PASSWORD=admin123
+
+  openhab:
+    image: openhab/openhab:4.3.5
+    container_name: openhab
+    restart: unless-stopped
+    ports:
+      - "8080:8080"
+      - "8443:8443"
+    environment:
+      - CRYPTO_POLICY=unlimited
+    volumes:
+      - openhab_userdata:/openhab/userdata
+      - ./openhab/userdata/etc/jetty/jetty-web.xml:/openhab/userdata/etc/jetty/jetty-web.xml
+      - ./openhab/addons:/openhab/addons:rw
+      - ./openhab/conf:/openhab/conf:rw
+      - ./openhab/persistence:/openhab/persistence:rw
+
+volumes:
+  grafana_data:
+  openhab_userdata:
+  energyplus_data:
