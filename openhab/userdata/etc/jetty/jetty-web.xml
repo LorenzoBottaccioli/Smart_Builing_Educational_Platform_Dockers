@@ -1,0 +1,23 @@
+<?xml version="1.0"?>
+<!DOCTYPE Configure PUBLIC "-//Jetty//Configure//EN" "http://www.eclipse.org/jetty/configure_9_0.dtd">
+<Configure id="Server" class="org.eclipse.jetty.server.Server">
+  <!-- Elimina la cabecera X-Frame-Options para permitir iframe -->
+  <Call name="addFilter">
+    <Arg>org.eclipse.jetty.servlets.HeaderFilter</Arg>
+    <Arg>/*</Arg>
+    <Arg>apply-both</Arg>
+    <Arg>null</Arg>
+    <Arg>
+      <Map>
+        <Entry>
+          <Item>name</Item>
+          <Item>X-Frame-Options</Item>
+        </Entry>
+        <Entry>
+          <Item>value</Item>
+          <Item></Item>
+        </Entry>
+      </Map>
+    </Arg>
+  </Call>
+</Configure>
