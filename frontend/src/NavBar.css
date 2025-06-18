@@ -1,0 +1,41 @@
+.navbar {
+    background-color: rgb(238, 81, 8);
+    padding: 10px 20px;
+}
+
+.nav-links {
+    list-style: none;
+    padding: 0;
+    display: flex;
+    justify-content: space-around; /* Adjust according to the number of links */
+}
+
+.nav-item {
+    margin: 0 10px;
+}
+
+.nav-link {
+    color: white;
+    text-decoration: none;
+    font-size: 16px;
+    font-weight: bold;
+    padding: 8px 16px;
+}
+
+.nav-link:hover,
+.nav-link:focus {
+    background-color: rgb(255, 255, 255);
+    color: rgb(238, 81, 8);  /* Highlight link on hover/focus */
+    border-radius: 4px;
+}
+
+/* Responsive adjustments */
+@media (max-width: 600px) {
+    .nav-links {
+        flex-direction: column;
+    }
+
+    .nav-item {
+        margin: 5px 0;
+    }
+}

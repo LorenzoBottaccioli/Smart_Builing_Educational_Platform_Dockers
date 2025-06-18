@@ -1,0 +1,42 @@
+.header {
+    background-color: #003366; /* Dark blue background matching your image */
+    color: #ffffff; /* White text */
+    padding: 5px 0; /* Removes any padding around the header */
+    margin: 0; /* Removes any margin */
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    border: none; /* Removes any border around the header */
+    box-shadow: none; /* Removes any shadow */
+    width: 100vw; /* Ensures the header spans the full width of the viewport */
+}
+
+.header-content {
+    width: 100%;
+    max-width: 1200px; /* Adjust the maximum width if needed */
+    display: flex;
+    justify-content: space-between; /* Aligns logo and details on opposite ends */
+    align-items: center;
+    padding: 0 20px; /* Adds padding only inside the content */
+}
+
+.logo {
+    height: 120px; /* Adjust the logo size as needed */
+    margin-left: 0; /* Ensures no extra margin on the left */
+    padding: 0; /* Removes any padding */
+}
+
+.institution-details {
+    text-align: right; /* Aligns text to the right */
+}
+
+.institution-details h1 {
+    font-size: 1.5em; /* Adjust to match the desired size */
+    margin: 0;
+}
+
+.institution-details h2 {
+    font-size: 1em; /* Adjust to match the desired size */
+    margin: 0;
+    color: #ffffff;
+}
