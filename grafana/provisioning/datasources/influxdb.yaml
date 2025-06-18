@@ -1,0 +1,24 @@
+apiVersion: 1
+
+datasources:
+  - name: InfluxDB Controlled
+    type: influxdb
+    access: proxy
+    url: http://influxdb:8086
+    database: controlled_building
+    user: admin
+    password: admin123
+    isDefault: true
+    version: 1
+    editable: true
+
+  - name: InfluxDB Base
+    type: influxdb
+    access: proxy
+    url: http://influxdb:8086
+    database: base_building
+    user: admin
+    password: admin123
+    isDefault: false
+    version: 1
+    editable: true
