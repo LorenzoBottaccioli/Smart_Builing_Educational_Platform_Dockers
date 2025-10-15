@@ -19,6 +19,10 @@ RUN wget --quiet https://repo.anaconda.com/miniconda/Miniconda3-latest-Linux-x86
 
 ENV PATH=${CONDA_DIR}/bin:$PATH
 
+RUN conda config --set channel_priority strict && \
+    conda tos accept --override-channels --channel https://repo.anaconda.com/pkgs/main && \
+    conda tos accept --override-channels --channel https://repo.anaconda.com/pkgs/r
+
 # Copiar y crear entorno Conda
 COPY conda_environment.yml /tmp/conda_environment.yml
 RUN conda env create -f /tmp/conda_environment.yml && \
@@ -55,3 +59,4 @@ ENTRYPOINT ["/bin/bash", "-lc", \
      --NotebookApp.password='' \
      --NotebookApp.notebook_dir=/home/jovyan/notebooks \
      --NotebookApp.tornado_settings=\"{'headers':{'Content-Security-Policy':'frame-ancestors *'}}\""]
+
